@@ -1,19 +1,31 @@
 import Debug.Trace
+import qualified Data.Sequence as S
 
-data Zipper a = Zipper [a] a [a] deriving Show
+data Zipper a = Zipper (S.Seq a) a (S.Seq a) deriving Show
 
 fromList :: [a] -> Zipper a
-fromList (x:xs) = Zipper [] x xs
+fromList (x:xs) = Zipper S.empty x (S.fromList xs)
+
+head' :: S.Seq a -> a
+head' xs = S.index xs 0
+
+last' :: S.Seq a -> a
+last' xs = S.index xs (S.length xs - 1)
+
+init' :: S.Seq a -> S.Seq a
+init' xs = S.take (S.length xs - 1) xs
 
 right :: Maybe (Zipper a) -> Maybe (Zipper a)
 right Nothing = Nothing
-right (Just (Zipper l a [])) = Nothing
-right (Just (Zipper l a (x:xs))) = Just $ Zipper (l ++ [a]) x xs
+right (Just (Zipper l a xs))
+  | S.null xs = Nothing
+  | otherwise = Just $ Zipper (l S.|> a) (head' xs) (S.drop 1 xs)
 
 left :: Maybe (Zipper a) -> Maybe (Zipper a)
 left Nothing = Nothing
-left (Just (Zipper [] _ _)) = Nothing
-left (Just (Zipper l a r)) = Just $ Zipper (init l) (last l) (a:r)
+left (Just (Zipper l a r))
+  | S.null l = Nothing
+  | otherwise = Just $ Zipper (init' l) (last' l) (a S.<| r)
 
 composeN :: Int -> (b -> b) -> b -> b
 composeN n f = foldr (.) id (replicate n f)
