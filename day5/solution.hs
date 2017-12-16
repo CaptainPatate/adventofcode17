@@ -28,7 +28,9 @@ jump num z@(Just _)
 
 step :: Maybe (Zipper Int) -> Maybe (Zipper Int)
 step Nothing = Nothing
-step (Just (Zipper i xs)) = jump (xs `S.index` i) (Just $ Zipper i (S.adjust (+1) i xs))
+step (Just (Zipper i xs)) = jump offset (Just $ Zipper i (S.adjust adjust i xs))
+  where offset = (xs `S.index` i)
+        adjust x = if offset >= 3 then x - 1 else x + 1
 
 readInt :: String -> Int
 readInt = read
