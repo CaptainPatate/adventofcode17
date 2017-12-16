@@ -6,35 +6,28 @@ data Zipper a = Zipper (S.Seq a) a (S.Seq a) deriving Show
 fromList :: [a] -> Zipper a
 fromList (x:xs) = Zipper S.empty x (S.fromList xs)
 
-head' :: S.Seq a -> a
-head' xs = S.index xs 0
+right :: Int -> Maybe (Zipper a) -> Maybe (Zipper a)
+right _ Nothing = Nothing
+right step same@(Just (Zipper l a r))
+  | step == 0 = same
+  | S.null r = Nothing
+  | S.length r < step = Nothing
+  | otherwise = Just $ Zipper ((l S.|> a) S.>< (S.take (step - 1) r)) (r `S.index` (step - 1)) (S.drop step r)
 
-last' :: S.Seq a -> a
-last' xs = S.index xs (S.length xs - 1)
-
-init' :: S.Seq a -> S.Seq a
-init' xs = S.take (S.length xs - 1) xs
-
-right :: Maybe (Zipper a) -> Maybe (Zipper a)
-right Nothing = Nothing
-right (Just (Zipper l a xs))
-  | S.null xs = Nothing
-  | otherwise = Just $ Zipper (l S.|> a) (head' xs) (S.drop 1 xs)
-
-left :: Maybe (Zipper a) -> Maybe (Zipper a)
-left Nothing = Nothing
-left (Just (Zipper l a r))
+left :: Int -> Maybe (Zipper a) -> Maybe (Zipper a)
+left _ Nothing = Nothing
+left step same@(Just (Zipper l a r))
+  | step == 0 = same
   | S.null l = Nothing
-  | otherwise = Just $ Zipper (init' l) (last' l) (a S.<| r)
-
-composeN :: Int -> (b -> b) -> b -> b
-composeN n f = foldr (.) id (replicate n f)
+  | len < step = Nothing
+  | otherwise = Just $ Zipper (S.take (len - step) l) (l `S.index` (len - step)) ((S.drop (len - step + 1) l) S.>< (a S.<| r))
+  where len = S.length l
 
 jump :: Int -> Maybe (Zipper a) -> Maybe (Zipper a)
 jump num Nothing = Nothing
 jump num z@(Just _)
-  | num < 0 = (composeN (abs num) left) z
-  | otherwise = (composeN num right) z
+  | num < 0 = left (abs num) z
+  | otherwise = right num z
 
 step :: Maybe (Zipper Int) -> Maybe (Zipper Int)
 step Nothing = Nothing
