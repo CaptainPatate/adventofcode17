@@ -1,7 +1,10 @@
 {-# LANGUAGE ViewPatterns #-}
+import Data.Bits (xor)
+import Data.Char (ord)
 import qualified Data.Sequence as S
 import Data.Sequence (Seq, (><), viewl, ViewL((:<)))
-import Prelude hiding (elem, init)
+import Prelude hiding (elem, init, round)
+import Text.Printf (printf)
 
 data Ring a = Ring {
     elem :: Seq a
@@ -48,9 +51,31 @@ updateIndex skipSize r = r { index = (index r + skipSize + (sliceLen r)) `mod` (
 step :: Int -> Int -> Ring a -> Ring a
 step skipSize n = ((updateIndex skipSize) . reverseSelection . (updateSlice n))
 
-input = [18,1,0,161,255,137,254,252,14,95,165,33,181,168,2,188]
-run :: [Int] -> Ring Int
-run input = snd $ foldl (\(skipSize, lastRing) n -> (skipSize+1, step skipSize n lastRing)) (0, init) input
+inputPart1 = [18,1,0,161,255,137,254,252,14,95,165,33,181,168,2,188]
 
-main = let (viewl -> a :< (viewl -> b :< _)) = elem $ run input
-       in print (a*b)
+run :: [Int] -> Int -> Ring Int -> (Int, Ring Int)
+run input skip initialSt = foldl (\(s, lastRing) n -> (s+1, step s n lastRing)) (skip, initialSt) input
+
+runPart1 = snd $ run inputPart1 0 init
+
+inputPart2 = (map ord "18,1,0,161,255,137,254,252,14,95,165,33,181,168,2,188") ++ [17, 31, 73, 47, 23]
+
+round :: [Int] -> Ring Int
+round input = round' input init 0 0
+  where round' i st skip roundNum = if roundNum == 64 then
+                                      st
+                                    else
+                                      let (skip', st') = run i skip st
+                                      in round' i st' skip' (roundNum+1)
+
+denseHash :: Seq Int -> Seq Int
+denseHash seq = fmap (foldl xor 0) $ S.chunksOf 16 seq
+
+toHex :: Seq Int -> String
+toHex = foldl (\acc e-> acc ++ printf "%.2x" e) ""
+
+runPart2 = toHex . denseHash . elem . round
+
+main = let (viewl -> a :< (viewl -> b :< _)) = elem runPart1
+       in do putStrLn $ "Part 1: " ++ (show (a*b))
+             putStrLn $ "Part 2: " ++ (runPart2 inputPart2)
